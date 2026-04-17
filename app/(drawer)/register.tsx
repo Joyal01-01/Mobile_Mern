@@ -1,6 +1,16 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View, ScrollView } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ScrollView,
+} from "react-native";
+import api from "../api";
 
 export default function Register() {
   const router = useRouter();
@@ -9,14 +19,32 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleRegister() {
-    if (name && libraryId && email && password && password === confirmPassword) {
-      // Normally send data to backend API here
-      alert("Account created successfully!");
-      router.push("/home"); // ✅ go to Home directly after signup
-    } else {
-      alert("Please fill all fields correctly!");
+  async function handleRegister() {
+    if (!name || !libraryId || !email || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill all fields.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await api.post("/api/auth/register", { name, libraryId, email, password });
+      const token = response?.data?.token;
+      if (token) {
+        await AsyncStorage.setItem("authToken", token);
+      }
+      Alert.alert("Success", "Account created successfully!");
+      router.push("/home");
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || "Registration failed. Please try again.";
+      Alert.alert("Registration Failed", message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -83,11 +111,16 @@ export default function Register() {
         {/* Register Button */}
         <TouchableOpacity
           onPress={handleRegister}
+          disabled={loading}
           className="bg-green-700 py-3 rounded-xl"
         >
-          <Text className="text-white text-center font-semibold text-lg">
-            Sign Up
-          </Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text className="text-white text-center font-semibold text-lg">
+              Sign Up
+            </Text>
+          )}
         </TouchableOpacity>
 
         {/* Back to Login */}

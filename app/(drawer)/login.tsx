@@ -1,18 +1,42 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View, Image } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image,
+} from "react-native";
+import api from "../api";
 
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleLogin() {
-    if (email && password) {
-      // Normally you'd validate login with backend API
-      router.push("/home"); // ✅ go to Home after login
-    } else {
-      alert("Please enter both email and password.");
+  async function handleLogin() {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await api.post("/api/auth/login", { email, password });
+      const token = response?.data?.token;
+      if (token) {
+        await AsyncStorage.setItem("authToken", token);
+      }
+      router.push("/home");
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || "Login failed. Please try again.";
+      Alert.alert("Login Failed", message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -58,11 +82,16 @@ export default function Login() {
       {/* Login Button */}
       <TouchableOpacity
         onPress={handleLogin}
+        disabled={loading}
         className="bg-green-700 py-3 rounded-xl"
       >
-        <Text className="text-white text-center font-semibold text-lg">
-          Login
-        </Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text className="text-white text-center font-semibold text-lg">
+            Login
+          </Text>
+        )}
       </TouchableOpacity>
 
       {/* Register Link */}
